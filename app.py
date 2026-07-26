@@ -8,7 +8,6 @@ from __future__ import annotations
 import os
 import secrets
 from datetime import date, datetime
-from pathlib import Path
 
 from flask import Flask, flash, redirect, render_template, request, send_file, session, url_for
 
@@ -16,29 +15,10 @@ import core
 
 app = Flask(__name__)
 
-
-def _load_secret_key() -> str:
-    """SECRET_KEY を決定する。
-
-    本番運用では環境変数 SECRET_KEY を設定すること。未設定時は、ソースに
-    固定値を書かず（公開リポジトリでの漏えいを避けるため）、初回起動時に
-    ランダム値を生成してローカルファイル(.flask_secret_key, gitignore対象)
-    に保存し、以降の起動ではそれを再利用する。
-    """
-    env_key = os.environ.get("SECRET_KEY")
-    if env_key:
-        return env_key
-
-    key_file = Path(__file__).with_name(".flask_secret_key")
-    if key_file.exists():
-        return key_file.read_text(encoding="utf-8").strip()
-
-    new_key = secrets.token_hex(32)
-    key_file.write_text(new_key, encoding="utf-8")
-    return new_key
-
-
-app.secret_key = _load_secret_key()
+# SECRET_KEY はセッション(Cookie)の署名に使う。環境変数で明示的に指定しない限り、
+# 起動のたびにランダム値を生成する(ソースに固定値を書かない)。入力データを次回に
+# 持ち越す必要がないため、再起動でセッションが失効しても問題ない前提の実装。
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 
 
 def _parse_date(value: str) -> date:
