@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>電話当番集計アプリ</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <h1>電話当番集計アプリ</h1>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <ul class="flash">
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <section>
+    <h2>1. 担当者・当番期間の{{ '編集' if edit_assignment else '登録' }}</h2>
+    <form
+      method="post"
+      action="{{ url_for('update_assignment', index=edit_assignment.index) if edit_assignment else url_for('add_assignment') }}"
+      class="inline-form"
+    >
+      <label>担当者名
+        <input type="text" name="name" value="{{ edit_assignment.name if edit_assignment else '' }}" required>
+      </label>
+      <label>開始日
+        <input type="date" name="start" value="{{ edit_assignment.start if edit_assignment else '' }}" required>
+      </label>
+      <label>終了日
+        <input type="date" name="end" value="{{ edit_assignment.end if edit_assignment else '' }}" required>
+      </label>
+      <button type="submit">{{ '更新' if edit_assignment else '登録' }}</button>
+      {% if edit_assignment %}
+        <a href="{{ url_for('index') }}">キャンセル</a>
+      {% endif %}
+    </form>
+  </section>
+
+  <section>
+    <h2>2. 登録済みの当番期間（{{ assignments|length }} 件）</h2>
+    {% if assignments %}
+      <table>
+        <thead>
+          <tr>
+            <th>担当者</th>
+            <th>開始日</th>
+            <th>終了日</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in assignments %}
+            <tr>
+              <td>{{ a.name }}</td>
+              <td>{{ a.start }}</td>
+              <td>{{ a.end }}</td>
+              <td class="row-actions">
+                <form method="get" action="{{ url_for('index') }}">
+                  <input type="hidden" name="edit" value="{{ loop.index0 }}">
+                  <button type="submit">編集</button>
+                </form>
+                <form method="post" action="{{ url_for('delete_assignment', index=loop.index0) }}">
+                  <button type="submit">削除</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <form method="post" action="{{ url_for('clear_assignments') }}">
+        <button type="submit" class="danger">全件クリア</button>
+      </form>
+    {% else %}
+      <p>まだ登録されていません。</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>3. 集計期間の指定・カレンダー確認・Excel出力</h2>
+    <form method="get" action="{{ url_for('index') }}" class="inline-form">
+      <label>集計開始日
+        <input type="date" name="period_start" value="{{ period_start }}" required>
+      </label>
+      <label>集計終了日
+        <input type="date" name="period_end" value="{{ period_end }}" required>
+      </label>
+      <button type="submit">カレンダーで確認</button>
+      <button type="submit" formmethod="post" formaction="{{ url_for('download') }}">Excelダウンロード</button>
+    </form>
+    <p class="note">給与締め（毎月15日）に合わせ、既定値は「前月16日〜当月15日」のサイクルです。日付を変更した場合は「カレンダーで確認」を押すと下の表が更新されます。</p>
+
+    {% if calendar_weeks %}
+      <h3>{{ period_start }} 〜 {{ period_end }} の当番カレンダー</h3>
+      <div class="legend">
+        {% for c in categories %}
+          <span class="legend-item {{ c }}">{{ category_labels[c] }}</span>
+        {% endfor %}
+      </div>
+      <p class="note">区分のプルダウンを変更すると、その日の集計区分（会社の公休日・祝日の平日扱いなど）が上書きされ、集計・Excel出力に反映されます。自動判定に戻すには元の区分を選び直してください。</p>
+      <table class="calendar">
+        <thead>
+          <tr>
+            <th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th><th>日</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for week in calendar_weeks %}
+            <tr>
+              {% for cell in week %}
+                {% if not cell.in_period %}
+                  <td class="out-of-period">
+                    <span class="day-number">{{ cell.date.month }}/{{ cell.date.day }}</span>
+                  </td>
+                {% else %}
+                  <td class="{{ cell.category }}{% if cell.overridden %} overridden{% endif %}">
+                    <span class="day-number">{{ cell.date.month }}/{{ cell.date.day }}</span>
+                    <form
+                      method="post"
+                      action="{{ url_for('set_day_category', day=cell.date.isoformat()) }}"
+                      class="category-form"
+                    >
+                      <input type="hidden" name="period_start" value="{{ period_start }}">
+                      <input type="hidden" name="period_end" value="{{ period_end }}">
+                      <select name="category" onchange="this.form.submit()">
+                        {% for c in categories %}
+                          <option value="{{ c }}" {% if cell.category == c %}selected{% endif %}>
+                            {{ category_labels[c] }}
+                          </option>
+                        {% endfor %}
+                      </select>
+                    </form>
+                    {% if cell.names %}
+                      <span class="names">{{ cell.names|join('、') }}</span>
+                    {% else %}
+                      <span class="names empty-names">未登録</span>
+                    {% endif %}
+                  </td>
+                {% endif %}
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </section>
+</body>
+</html>

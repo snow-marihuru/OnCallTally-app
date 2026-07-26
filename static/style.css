@@ -1,0 +1,173 @@
+body {
+  font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", sans-serif;
+  max-width: 760px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  color: #222;
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+
+section {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #ddd;
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 1rem;
+}
+
+.inline-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.9rem;
+}
+
+input[type="text"],
+input[type="date"] {
+  margin-top: 0.25rem;
+  padding: 0.35rem;
+}
+
+button {
+  padding: 0.4rem 1rem;
+  cursor: pointer;
+}
+
+button.danger {
+  background-color: #fbeaea;
+  border: 1px solid #d9534f;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+th, td {
+  border: 1px solid #ccc;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.row-actions form {
+  margin: 0;
+}
+
+table.calendar {
+  border-collapse: collapse;
+  width: 100%;
+  margin-bottom: 1.5rem;
+  table-layout: fixed;
+}
+
+table.calendar th,
+table.calendar td {
+  border: 1px solid #ccc;
+  text-align: center;
+  vertical-align: top;
+  height: 5.5rem;
+  width: 14.28%;
+  padding: 0.25rem;
+}
+
+table.calendar td.out-of-period {
+  color: #bbb;
+  background-color: #fafafa;
+}
+
+table.calendar td.overridden {
+  outline: 2px dashed #d9534f;
+  outline-offset: -2px;
+}
+
+table.calendar .day-number {
+  display: block;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+table.calendar .category-form {
+  margin: 0.2rem 0;
+}
+
+table.calendar .category-form select {
+  width: 100%;
+  font-size: 0.75rem;
+  padding: 0.1rem;
+}
+
+table.calendar .names {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: bold;
+  word-break: break-all;
+}
+
+table.calendar .names.empty-names {
+  font-weight: normal;
+  color: #b00020;
+}
+
+td.weekday {
+  background-color: #ffffff;
+}
+
+td.saturday {
+  background-color: #e8f1fb;
+}
+
+td.sunday_holiday {
+  background-color: #fdeceb;
+}
+
+.legend {
+  display: flex;
+  gap: 1rem;
+  margin: 0.75rem 0;
+  font-size: 0.85rem;
+}
+
+.legend-item {
+  padding: 0.15rem 0.6rem;
+  border-radius: 3px;
+  border: 1px solid #ccc;
+}
+
+.legend-item.weekday {
+  background-color: #ffffff;
+}
+
+.legend-item.saturday {
+  background-color: #e8f1fb;
+}
+
+.legend-item.sunday_holiday {
+  background-color: #fdeceb;
+}
+
+.flash {
+  color: #b00020;
+  list-style: none;
+  padding: 0.5rem 1rem;
+  background-color: #fdeaea;
+  border: 1px solid #f5c2c2;
+}
+
+.note {
+  color: #666;
+  font-size: 0.85rem;
+}
