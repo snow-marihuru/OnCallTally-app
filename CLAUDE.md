@@ -48,3 +48,14 @@ python -m venv .venv
   - `GET /` (`index()`) : クエリパラメータ `period_start` / `period_end`（未指定ならセッション→デフォルトの順で補完）を集計期間として解釈し、`core.build_calendar` にセッションの overrides を渡してカレンダープレビューを生成する。有効な期間であればセッションにも保存する。
   - `/download` : 集計期間を受け取り、`core.find_overlapping_days` → `core.find_uncovered_days` の順でエラーチェックした後、問題なければ `core.aggregate`（セッションの overrides を渡す）→ `core.build_excel` を呼び出して .xlsx を `send_file` で返す。
 - **templates/index.html** / **static/style.css** — 単一ページのフォーム＋一覧＋カレンダー確認＋ダウンロードUI。日付入力は HTML5 の `<input type="date">` を利用し、手入力とカレンダーUIの両方に自然に対応させている。登録フォームは `edit_assignment`（`app.py` の `index()` がクエリパラメータ `edit` から算出）の有無で「登録モード」と「編集モード」を切り替える。集計期間フォームは1つの `<form method="get">` に「カレンダーで確認」（GET / を再表示）と「Excelダウンロード」（`formmethod="post" formaction="/download"` でオーバーライド）の2つの送信ボタンを持たせ、同じ日付入力欄を共有している。カレンダーは区分ごとに背景色を変え（`td.weekday` / `td.saturday` / `td.sunday_holiday`）、手動上書きされたセルは `overridden` クラスで破線枠を付け、当番未登録のマスは「未登録」と赤字表示する。各セル内のプルダウン（`/set-day-category/<day>` への小フォーム）で区分を手動変更できる。
+
+## デプロイ(Render向け、デモ公開用)
+
+本番運用ではなく一時的なデモ公開（研修アンケート提出用）を想定した最小限の対応。詳しい手順・注意点は [README.md](README.md#renderへのデモ公開について) を参照。実装上のポイントのみここに記す。
+
+- **Procfile** : `web: gunicorn app:app --bind 0.0.0.0:$PORT`。`gunicorn app:app` のように `--bind` を省略するとgunicornは既定で `127.0.0.1:8000` にバインドしてしまい、Renderが割り当てる `$PORT` を無視するため、ヘルスチェックに失敗しデプロイが失敗する。必ず明示的にバインドすること。
+- **gunicornはWindowsで動作しない**（`fcntl` に依存する純粋なUnix向けツールのため）。ローカル(Windows)での動作確認は `waitress` 等の代替WSGIサーバーで `app:app` オブジェクト自体の妥当性を検証する形にしている。gunicorn自体の起動確認はRenderの実行環境（Linux）に委ねる。
+- `app.py` 末尾の `if __name__ == "__main__":` ブロックは `python app.py` で直接起動した場合のみ使われる。Render上ではgunicornが `app:app` を直接importして使うため、このブロックはRenderでは実行されない。
+  - `PORT` 環境変数からポート番号を取得し、`host="0.0.0.0"` でリッスンする（Render等のPaaS向けの一般的な作法。ローカルでは未設定時 `5000` にフォールバック）。
+  - `FLASK_DEBUG` 環境変数が `1`/`true`/`yes`（大文字小文字を問わない）のときのみ `debug=True` かつ `use_reloader=True` にする。未設定時は両方 `False`（安全側のデフォルト）。**Render側ではこの環境変数を設定しないこと**（デバッガ経由の任意コード実行を防ぐため）。ローカルで開発時に自動リロードが欲しい場合は `FLASK_DEBUG=1` を設定して起動する。
+- Renderの無料プランはアイドル後にスリープ→次回アクセスで再起動する。`SECRET_KEY` を環境変数で固定していない場合、再起動のたびにランダムな鍵が再生成され、既存のセッション（Cookieに保存された登録データ）が無効化される。データ非永続の設計自体は意図通りだが、デモ中に見た目上唐突にデータが消えるのを避けたい場合は、Renderの環境変数に `SECRET_KEY` を固定値で設定する。

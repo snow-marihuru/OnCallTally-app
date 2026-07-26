@@ -250,6 +250,11 @@ def download():
 
 
 if __name__ == "__main__":
-    # debug=True はブラウザから任意コード実行が可能になる重大なリスクがあるため無効化。
-    # ファイル変更時の自動リロードは use_reloader で維持する。
-    app.run(debug=False, use_reloader=True)
+    # 本番(Render等)ではgunicornがこの__main__ブロックを経由せずappを直接読み込むため、
+    # ここは `python app.py` でのローカル起動時のみ使われる。
+    # FLASK_DEBUGを明示的に設定しない限りdebug=Falseとし、
+    # debug=True(Werkzeugデバッガ経由で任意コード実行が可能になる)が本番で
+    # 意図せず有効にならないようにする。
+    debug_mode = os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes")
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=debug_mode, use_reloader=debug_mode)
