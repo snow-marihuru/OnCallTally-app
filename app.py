@@ -6,14 +6,39 @@ core.py のみを利用し、この app.py (Web UI 部分) を差し替える想
 from __future__ import annotations
 
 import os
+import secrets
 from datetime import date, datetime
+from pathlib import Path
 
 from flask import Flask, flash, redirect, render_template, request, send_file, session, url_for
 
 import core
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
+
+
+def _load_secret_key() -> str:
+    """SECRET_KEY を決定する。
+
+    本番運用では環境変数 SECRET_KEY を設定すること。未設定時は、ソースに
+    固定値を書かず（公開リポジトリでの漏えいを避けるため）、初回起動時に
+    ランダム値を生成してローカルファイル(.flask_secret_key, gitignore対象)
+    に保存し、以降の起動ではそれを再利用する。
+    """
+    env_key = os.environ.get("SECRET_KEY")
+    if env_key:
+        return env_key
+
+    key_file = Path(__file__).with_name(".flask_secret_key")
+    if key_file.exists():
+        return key_file.read_text(encoding="utf-8").strip()
+
+    new_key = secrets.token_hex(32)
+    key_file.write_text(new_key, encoding="utf-8")
+    return new_key
+
+
+app.secret_key = _load_secret_key()
 
 
 def _parse_date(value: str) -> date:
@@ -245,4 +270,6 @@ def download():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # debug=True はブラウザから任意コード実行が可能になる重大なリスクがあるため無効化。
+    # ファイル変更時の自動リロードは use_reloader で維持する。
+    app.run(debug=False, use_reloader=True)
