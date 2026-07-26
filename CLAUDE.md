@@ -8,18 +8,26 @@ OnCallTally-app は、電話当番（オンコール）表から集計期間内�
 
 給与締めは毎月15日のため、集計期間は暦月ではなく「前月16日〜当月15日」を1サイクルとして扱う（例: 7/16〜8/15）。
 
+人向けの使い方（セットアップ・起動・操作手順）は [README.md](README.md) に記載している。ここ（CLAUDE.md）は実装の背景や設計判断など、コードを読むだけでは分かりにくい部分の記録に絞る。
+
 ## よく使うコマンド
 
 ```bash
-# 仮想環境の作成・依存インストール（初回のみ）
+# 仮想環境の作成・依存インストール（初回のみ。開発時はrequirements-dev.txtでpytestも入れる）
 python -m venv .venv
-.venv/Scripts/python.exe -m pip install -r requirements.txt
+.venv/Scripts/python.exe -m pip install -r requirements-dev.txt
 
 # 開発サーバー起動（http://127.0.0.1:5000）
 .venv/Scripts/python.exe app.py
+
+# 自動テスト実行（tests/test_core.py。必ず `python -m pytest` で実行すること。
+# `pytest` 単体だとカレントディレクトリがsys.pathに入らず `import core` に失敗する）
+.venv/Scripts/python.exe -m pytest
 ```
 
-自動テストは未整備。動作確認は Flask の test_client を使い、対話的に `app.py` のルートと `core.py` の集計関数を呼び出して行う（`python -c` で core.aggregate / core.build_excel / app.test_client() を直接叩くのが早い）。
+`requirements.txt` / `requirements-dev.txt` はインストール済みバージョンで固定している（`pip freeze`ベース）。Flask/jpholiday/openpyxlを更新する際は、固定バージョンも合わせて更新すること。
+
+`tests/test_core.py` は `core.py` の集計ロジック（区分自動判定・手動上書き・集計・重複/空白日検出・カレンダー生成・Excel出力・デフォルト集計期間）を固定日付でカバーしている。日付は2026年7月を中心に選んでおり、jpholiday側の祝日データが変わった場合に検出できるよう、祝日を含む日（7/20 海の日）を意図的にテストに含めている。app.py（Flask ルーティング部分）に対する自動テストは未整備で、動作確認は Flask の test_client を使って対話的に行っている。
 
 ## アーキテクチャ
 
