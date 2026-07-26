@@ -251,10 +251,15 @@ def download():
 
 if __name__ == "__main__":
     # 本番(Render等)ではgunicornがこの__main__ブロックを経由せずappを直接読み込むため、
-    # ここは `python app.py` でのローカル起動時のみ使われる。
+    # ここは `python app.py` でのローカル起動時のみ使われる
+    # (Render上の実際のbindはProcfileのgunicorn側の--bindで行われ、こことは無関係)。
+    # HOSTは未設定時 127.0.0.1 とし、`python app.py` を素朴にローカル起動しただけで
+    # 同じネットワーク上の他端末からアクセスできてしまわないようにする。
+    #
     # FLASK_DEBUGを明示的に設定しない限りdebug=Falseとし、
     # debug=True(Werkzeugデバッガ経由で任意コード実行が可能になる)が本番で
     # 意図せず有効にならないようにする。
     debug_mode = os.environ.get("FLASK_DEBUG", "").lower() in ("1", "true", "yes")
+    host = os.environ.get("HOST", "127.0.0.1")
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=debug_mode, use_reloader=debug_mode)
+    app.run(host=host, port=port, debug=debug_mode, use_reloader=debug_mode)
