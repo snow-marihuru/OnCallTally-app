@@ -141,7 +141,13 @@ def test_build_calendar_marks_overridden_cells():
     assert cell["overridden"] is True
 
 
-def test_build_excel_contains_totals_row():
+def test_calculate_allowance():
+    counts = {"weekday": 6, "saturday": 2, "sunday_holiday": 2}
+    # 6*600 + 2*900 + 2*1200 = 3600 + 1800 + 2400 = 7800
+    assert core.calculate_allowance(counts) == 7800
+
+
+def test_build_excel_contains_totals_row_and_allowance():
     aggregation = {
         "Aさん": {"weekday": 6, "saturday": 2, "sunday_holiday": 2},
         "Bさん": {"weekday": 14, "saturday": 3, "sunday_holiday": 4},
@@ -150,9 +156,17 @@ def test_build_excel_contains_totals_row():
     wb = load_workbook(buffer)
     rows = list(wb.active.iter_rows(values_only=True))
 
-    assert rows[3] == ("Aさん", 6, 2, 2, 10)
-    assert rows[4] == ("Bさん", 14, 3, 4, 21)
-    assert rows[5] == ("合計", 20, 5, 6, 31)
+    # Aさん: 6*600+2*900+2*1200=7800 / Bさん: 14*600+3*900+4*1200=15900
+    assert rows[3] == ("Aさん", 6, 2, 2, 10, 7800)
+    assert rows[4] == ("Bさん", 14, 3, 4, 21, 15900)
+    assert rows[5] == ("合計", 20, 5, 6, 31, 23700)
+
+    # 区分別の手当内訳(検証用) - 合計行の手当支給額(23700)と一致すること
+    assert rows[7] == ("手当内訳(検証用)", None, None, None, None, None)
+    assert rows[8] == ("平日手当合計", 12000, None, None, None, None)
+    assert rows[9] == ("土曜手当合計", 4500, None, None, None, None)
+    assert rows[10] == ("日祝日手当合計", 7200, None, None, None, None)
+    assert rows[11] == ("手当支給額合計", 23700, None, None, None, None)
 
 
 def test_default_period_before_15th_uses_previous_cycle():

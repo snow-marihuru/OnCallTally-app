@@ -29,6 +29,11 @@ CATEGORY_SHORT_LABELS = {
     "saturday": "土曜",
     "sunday_holiday": "日祝日",
 }
+ALLOWANCE_RATES = {
+    "weekday": 600,
+    "saturday": 900,
+    "sunday_holiday": 1200,
+}
 
 
 @dataclass
@@ -192,6 +197,14 @@ def build_calendar(
     return weeks
 
 
+def calculate_allowance(counts: dict[str, int]) -> int:
+    """区分別の当番日数から手当支給額(円)を計算する。
+
+    平日600円/土曜900円/日祝日1200円の単価で、日数に応じて支給される想定。
+    """
+    return sum(counts[c] * ALLOWANCE_RATES[c] for c in CATEGORIES)
+
+
 def build_excel(
     aggregation: dict[str, dict[str, int]], period_start: date, period_end: date
 ) -> BytesIO:
@@ -204,7 +217,9 @@ def build_excel(
     ws["A1"].font = Font(bold=True)
 
     header_row = 3
-    headers = ["担当者", *[CATEGORY_LABELS[c] for c in CATEGORIES], "合計日数"]
+    headers = ["担当者", *[CATEGORY_LABELS[c] for c in CATEGORIES], "合計日数", "手当支給額(円)"]
+    total_days_col = len(headers) - 1
+    allowance_col = len(headers)
     for col, header in enumerate(headers, start=1):
         cell = ws.cell(row=header_row, column=col, value=header)
         cell.font = Font(bold=True)
@@ -217,7 +232,8 @@ def build_excel(
         ws.cell(row=row, column=1, value=name)
         for col, category in enumerate(CATEGORIES, start=2):
             ws.cell(row=row, column=col, value=counts[category])
-        ws.cell(row=row, column=len(headers), value=total)
+        ws.cell(row=row, column=total_days_col, value=total)
+        ws.cell(row=row, column=allowance_col, value=calculate_allowance(counts))
         row += 1
 
     totals = {c: 0 for c in CATEGORIES}
@@ -225,14 +241,28 @@ def build_excel(
         for category in CATEGORIES:
             totals[category] += counts[category]
     grand_total = sum(totals.values())
+    grand_allowance = calculate_allowance(totals)
 
     ws.cell(row=row, column=1, value="合計").font = Font(bold=True)
     for col, category in enumerate(CATEGORIES, start=2):
         ws.cell(row=row, column=col, value=totals[category]).font = Font(bold=True)
-    ws.cell(row=row, column=len(headers), value=grand_total).font = Font(bold=True)
+    ws.cell(row=row, column=total_days_col, value=grand_total).font = Font(bold=True)
+    ws.cell(row=row, column=allowance_col, value=grand_allowance).font = Font(bold=True)
 
     for col in range(1, len(headers) + 1):
         ws.column_dimensions[get_column_letter(col)].width = 16
+
+    # 手当支給額の検証用内訳。区分別の手当合計を個別に示すことで、
+    # 上表の「合計」行の手当支給額と一致するかを目視で確認できるようにする。
+    breakdown_row = row + 2
+    ws.cell(row=breakdown_row, column=1, value="手当内訳(検証用)").font = Font(bold=True)
+    breakdown_row += 1
+    for category in CATEGORIES:
+        ws.cell(row=breakdown_row, column=1, value=f"{CATEGORY_SHORT_LABELS[category]}手当合計")
+        ws.cell(row=breakdown_row, column=2, value=totals[category] * ALLOWANCE_RATES[category])
+        breakdown_row += 1
+    ws.cell(row=breakdown_row, column=1, value="手当支給額合計").font = Font(bold=True)
+    ws.cell(row=breakdown_row, column=2, value=grand_allowance).font = Font(bold=True)
 
     buffer = BytesIO()
     wb.save(buffer)

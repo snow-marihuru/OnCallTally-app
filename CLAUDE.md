@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## プロジェクト概要
 
-OnCallTally-app は、電話当番（オンコール）表から集計期間内の当番日数を「平日／土曜日／日祝日」区分別に人ごとへ自動集計し、Excel（.xlsx）で出力するWebアプリ。給与計算（担当日数のカウント）の手作業・ミスをなくすことが目的。単価計算は行わず、日数集計のみを担う。将来的にはWeb UIを外してローカル運用へ切り替える構想があるため、集計ロジックとUIを分離した構成にしている。
+OnCallTally-app は、電話当番（オンコール）表から集計期間内の当番日数を「平日／土曜日／日祝日」区分別に人ごとへ自動集計し、Excel（.xlsx）で出力するWebアプリ。給与計算（担当日数のカウント、および区分別単価に基づく手当支給額の計算）の手作業・ミスをなくすことが目的。将来的にはWeb UIを外してローカル運用へ切り替える構想があるため、集計ロジックとUIを分離した構成にしている。
+
+手当支給額は平日600円／土曜900円／日祝日1200円の単価（`core.ALLOWANCE_RATES`）で計算する。単価が変わった場合はこの定数を更新すること。
 
 給与締めは毎月15日のため、集計期間は暦月ではなく「前月16日〜当月15日」を1サイクルとして扱う（例: 7/16〜8/15）。
 
@@ -27,7 +29,7 @@ python -m venv .venv
 
 `requirements.txt` / `requirements-dev.txt` はインストール済みバージョンで固定している（`pip freeze`ベース）。Flask/jpholiday/openpyxlを更新する際は、固定バージョンも合わせて更新すること。
 
-`tests/test_core.py` は `core.py` の集計ロジック（区分自動判定・手動上書き・集計・重複/空白日検出・カレンダー生成・Excel出力・デフォルト集計期間）を固定日付でカバーしている。日付は2026年7月を中心に選んでおり、jpholiday側の祝日データが変わった場合に検出できるよう、祝日を含む日（7/20 海の日）を意図的にテストに含めている。app.py（Flask ルーティング部分）に対する自動テストは未整備で、動作確認は Flask の test_client を使って対話的に行っている。
+`tests/test_core.py` は `core.py` の集計ロジック（区分自動判定・手動上書き・集計・重複/空白日検出・カレンダー生成・手当計算・Excel出力・デフォルト集計期間）を固定日付でカバーしている。日付は2026年7月を中心に選んでおり、jpholiday側の祝日データが変わった場合に検出できるよう、祝日を含む日（7/20 海の日）を意図的にテストに含めている。app.py（Flask ルーティング部分）に対する自動テストは未整備で、動作確認は Flask の test_client を使って対話的に行っている。
 
 ## アーキテクチャ
 
@@ -37,7 +39,8 @@ python -m venv .venv
   - `aggregate(assignments, period_start, period_end, overrides=None)` : 担当期間を集計期間でクリップしてから日毎に区分・積算する。担当期間が集計期間の外にはみ出す分はカウントしない。人名（`Assignment.name`）でグルーピングするため、同一人物の複数期間登録は自動的に1行にまとまる。
   - `find_overlapping_days(assignments, period_start, period_end)` : 集計期間内で同じ日に複数の当番期間（同一人物の重複登録も含む）が重なっている日を検出する。日数の二重カウント防止用で、`app.py` の `/download` はここで重複が見つかると Excel を出力せずエラーを表示する。
   - `find_uncovered_days(assignments, period_start, period_end)` : 集計期間内でどの当番期間にも含まれない空白日を検出する。当番の登録漏れ防止用で、こちらも見つかると `/download` は Excel を出力しない。
-  - `build_excel(aggregation, period_start, period_end)` : openpyxl で集計結果を .xlsx（BytesIO）として生成する。担当者ごとの行に加え、末尾に区分別・合計日数の「合計」行を出力する。
+  - `calculate_allowance(counts)` : 区分別日数(`{"weekday": n, ...}`)から `ALLOWANCE_RATES`（平日600円/土曜900円/日祝日1200円）に基づく手当支給額(円)を計算する。
+  - `build_excel(aggregation, period_start, period_end)` : openpyxl で集計結果を .xlsx（BytesIO）として生成する。担当者ごとの行に「手当支給額(円)」列（`calculate_allowance`の結果）を含め、末尾に区分別・合計日数・合計手当の「合計」行を出力する。さらにその下に、区分別の手当合計（平日/土曜/日祝日それぞれ）と手当支給額合計を並べた「手当内訳(検証用)」ブロックを出力し、上表の「合計」行の手当支給額と一致するかを目視で検算できるようにしている。
   - `build_calendar(assignments, period_start, period_end, overrides=None)` : Excel出力前に画面上で「誰がいつ当番か」を目視確認できるよう、集計期間全体を1つの連続したカレンダー（週単位の行のリスト、月曜始まり）として組み立てる。月をまたぐ期間（例: 7/16〜8/15）でも表を分割せず、period_start を含む週の月曜日から period_end を含む週の日曜日までを並べる。各セルは実日付・区分（overrides適用後）・上書きフラグ（`overridden`）・担当者名一覧を持ち、期間外の日は `in_period=False` になる（月・グリッド単位の分割はしていない）。
   - `default_period(today)` : 「前月16日〜当月15日」サイクルのうち today が含まれる進行中の期間を返す（画面の初期値に使用）。
   - **jpholiday は祝日データをライブラリ内部に保持しているため、法改正等に対応するには年1回程度ライブラリ本体をアップデートすること**（コード内にも同旨のコメントあり）。
