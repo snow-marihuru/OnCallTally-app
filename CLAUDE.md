@@ -49,6 +49,13 @@ python -m venv .venv
   - `/download` : 集計期間を受け取り、`core.find_overlapping_days` → `core.find_uncovered_days` の順でエラーチェックした後、問題なければ `core.aggregate`（セッションの overrides を渡す）→ `core.build_excel` を呼び出して .xlsx を `send_file` で返す。
 - **templates/index.html** / **static/style.css** — 単一ページのフォーム＋一覧＋カレンダー確認＋ダウンロードUI。日付入力は HTML5 の `<input type="date">` を利用し、手入力とカレンダーUIの両方に自然に対応させている。登録フォームは `edit_assignment`（`app.py` の `index()` がクエリパラメータ `edit` から算出）の有無で「登録モード」と「編集モード」を切り替える。集計期間フォームは1つの `<form method="get">` に「カレンダーで確認」（GET / を再表示）と「Excelダウンロード」（`formmethod="post" formaction="/download"` でオーバーライド）の2つの送信ボタンを持たせ、同じ日付入力欄を共有している。カレンダーは区分ごとに背景色を変え（`td.weekday` / `td.saturday` / `td.sunday_holiday`）、手動上書きされたセルは `overridden` クラスで破線枠を付け、当番未登録のマスは「未登録」と赤字表示する。各セル内のプルダウン（`/set-day-category/<day>` への小フォーム）で区分を手動変更できる。
 
+## 社内PCでのローカル運用向けファイル
+
+ターミナル操作に不慣れな利用者でも使えるよう、Windows用の起動バッチファイルを用意している。詳しい利用手順は [README.md](README.md#社内pcでの利用方法推奨) 参照。
+
+- **setup.bat** / **start_app.bat** : それぞれ初回セットアップ（venv作成＋`pip install -r requirements.txt`）、起動（アプリ起動＋数秒後にブラウザを自動で開く）を行う。
+- **重要**: これらの`.bat`ファイル本体の中身（`echo`文やコメント）は**必ずASCII(英語)のみ**で書くこと。日本語文字列を含めると、`chcp 65001`を入れても一部の行でcmd.exeがトークンを誤認識し、「'〜' is not recognized as an internal or external command」のようなエラーで壊れることを実機検証で確認済み（cmd.exeのUTF-8処理の既知の制限で、BOM有無でも解消しない）。ファイル名自体（`setup.bat`等）や、これらを説明するREADME.md側の日本語記述は影響を受けない（cmd.exeの行パーサを通らないため）。日本語での案内が必要な場合はREADME.md側に書き、`.bat`内は英語メッセージのみにすること。
+
 ## デプロイ(Render向け、デモ公開用)
 
 本番運用ではなく一時的なデモ公開（研修アンケート提出用）を想定した最小限の対応。詳しい手順・注意点は [README.md](README.md#renderへのデモ公開について) を参照。実装上のポイントのみここに記す。
