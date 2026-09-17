@@ -90,14 +90,14 @@ table.calendar td.out-of-period {
 }
 
 table.calendar td.overridden {
-  outline: 2px dashed #d9534f;
+  outline: 2px dashed #000000;
   outline-offset: -2px;
 }
 
 table.calendar .day-number {
   display: block;
   font-size: 0.8rem;
-  color: #666;
+  color: #333;
 }
 
 table.calendar .category-form {
@@ -127,11 +127,11 @@ td.weekday {
 }
 
 td.saturday {
-  background-color: #e8f1fb;
+  background-color: #9dc3e8;
 }
 
 td.sunday_holiday {
-  background-color: #fdeceb;
+  background-color: #e06666;
 }
 
 .legend {
@@ -152,11 +152,11 @@ td.sunday_holiday {
 }
 
 .legend-item.saturday {
-  background-color: #e8f1fb;
+  background-color: #9dc3e8;
 }
 
 .legend-item.sunday_holiday {
-  background-color: #fdeceb;
+  background-color: #e06666;
 }
 
 .flash {
